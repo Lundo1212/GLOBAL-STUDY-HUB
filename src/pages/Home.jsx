@@ -502,11 +502,26 @@ const [email, setEmail] = useState("");
 };
 
 
-  // ================= ADD COMMENT =================
+  // ================= LOAD COMMENTS =================
 useEffect(() => {
   fetchComments();
 }, []);
 
+const fetchComments = async () => {
+  const { data, error } = await supabase
+    .from("comments")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (!error && data) {
+    setComments(data);
+  } else {
+    setComments([]);
+    console.log(error);
+  }
+};
+
+// ================= ADD COMMENT =================
 const addComment = async () => {
   if (!text) return;
 
@@ -525,15 +540,7 @@ const addComment = async () => {
   fetchComments();
 };
 
-const fetchComments = async () => {
-  const { data } = await supabase
-    .from("comments")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  setComments(data);
-};
-
+// ================= ADD REPLY (LOCAL ONLY) =================
 const addReply = (commentId, reply) => {
   if (!reply) return;
 
@@ -564,22 +571,19 @@ const deleteComment = async (id) => {
   fetchComments();
 };
 
-  setComments(updated);
-};
-
-const deleteReply = async (commentId, replyId) => {
+// ================= DELETE REPLY =================
+const deleteReply = (commentId, replyId) => {
   const updated = comments.map(c => {
     if (c.id === commentId) {
       return {
         ...c,
-        replies: c.replies.filter(r => r.id !== replyId)
+        replies: (c.replies || []).filter(r => r.id !== replyId)
       };
     }
     return c;
   });
 
-  await supabase.from("comments").delete().eq("id", commentId);
-  fetchComments();
+  setComments(updated);
 };
 
 
