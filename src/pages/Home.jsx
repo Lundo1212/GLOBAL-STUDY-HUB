@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "./supabaseClient";
 
 export default function Home() {
 
@@ -390,10 +391,7 @@ const [email, setEmail] = useState("");
     }
   ];
 
-  useEffect(() => {
-  const saved = JSON.parse(localStorage.getItem("materials")) || [];
-  setMaterials(saved);
-}, []);
+ 
 
   // ================= ROTATE UNIVERSITIES =================
   useEffect(() => {
@@ -406,9 +404,20 @@ const [email, setEmail] = useState("");
 
   // ================= LOAD FROM ADMIN =================
   useEffect(() => {
-    const data = JSON.parse(localStorage.getItem("materials")) || [];
+  fetchMaterials();
+}, []);
+   const fetchMaterials = async () => {
+  const { data, error } = await supabase
+    .from("materials")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (!error) {
     setMaterials(data);
-  }, []);
+  } else {
+    console.log(error);
+  }
+};
 
   // ================= LOGIN =================
   const handleLogin = () => {
@@ -467,7 +476,7 @@ const [email, setEmail] = useState("");
   );
 
   if (match) {
-    openFile(match.fileURL);
+    openFile(match.file_url);
     setSearch("");
   } else {
     alert("No matching document found");
@@ -494,25 +503,35 @@ const [email, setEmail] = useState("");
 
 
   // ================= ADD COMMENT =================
-const addComment = () => {
+useEffect(() => {
+  fetchComments();
+}, []);
+
+const addComment = async () => {
   if (!text) return;
 
-  const newComment = {
-    id: Date.now(),
-    name: name || "Anonymous",
-    text,
-    email,
-    time: new Date().toLocaleString(),
-    replies: [] // ✅ IMPORTANT
-  };
+  await supabase.from("comments").insert([
+    {
+      name: name || "Anonymous",
+      email,
+      text,
+      time: new Date().toLocaleString()
+    }
+  ]);
 
-  const updated = [...comments, newComment];
-  setComments(updated);
-  localStorage.setItem("comments", JSON.stringify(updated));
-
-  setName("");
   setText("");
+  setName("");
   setEmail("");
+  fetchComments();
+};
+
+const fetchComments = async () => {
+  const { data } = await supabase
+    .from("comments")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  setComments(data);
 };
 
 const addReply = (commentId, reply) => {
@@ -540,14 +559,28 @@ const addReply = (commentId, reply) => {
 };
 
 // ================= DELETE COMMENT =================
-const deleteComment = (id) => {
-  const updated = comments.filter(c => {
-    return !(c.id === id && c.name === name);
-  });
+const deleteComment = async (id) => {
+  await supabase.from("comments").delete().eq("id", id);
+  fetchComments();
+};
 
   setComments(updated);
 };
 
+const deleteReply = async (commentId, replyId) => {
+  const updated = comments.map(c => {
+    if (c.id === commentId) {
+      return {
+        ...c,
+        replies: c.replies.filter(r => r.id !== replyId)
+      };
+    }
+    return c;
+  });
+
+  await supabase.from("comments").delete().eq("id", commentId);
+  fetchComments();
+};
 
 
   // ================= UI =================
@@ -663,7 +696,8 @@ const deleteComment = (id) => {
                   <div
                     key={m.id}
                     style={{ padding: 10, cursor: "pointer" }}
-                    onClick={() => handleSearchClick(m.fileURL)}
+                    onClick={() => handleSearchClick(m.file_url)}
+                                         
                   >
                     {m.title}
                   </div>
@@ -758,11 +792,11 @@ const deleteComment = (id) => {
         >
           <h3>{m.title}</h3>
 
-          <button onClick={() => openFile(m.fileURL)}>
+          <button onClick={() => openFile(m.file_url)}>
             Read
           </button>
 
-          <button onClick={() => downloadFile(m.fileURL, m.title)}>
+          <button onClick={() => downloadFile(m.file_url, m.title)}>
             Download
           </button>
         </div>
@@ -1012,31 +1046,52 @@ const deleteComment = (id) => {
 
     {/* UPLOAD BUTTON */}
     <button
-      onClick={() => {
-        if (!uploadTitle || !uploadCategory || !uploadFile) return;
+     onClick={async () => {
+  if (!uploadTitle || !uploadCategory || !uploadFile) return;
 
-        const reader = new FileReader();
+  const fileName = `${Date.now()}-${uploadFile.name}`;
 
-        reader.onload = () => {
-          const newItem = {
-            id: Date.now(),
-            title: uploadTitle,
-            category: uploadCategory,
-            fileURL: reader.result
-          };
+  // 1. Upload file to Supabase Storage
+  const { error: uploadError } = await supabase
+    .storage
+    .from("materials-files")
+    .upload(fileName, uploadFile);
 
-          const updated = [...materials, newItem];
-          setMaterials(updated);
-          localStorage.setItem("materials", JSON.stringify(updated));
+  if (uploadError) {
+    console.log(uploadError);
+    return;
+  }
 
-          // reset
-          setUploadTitle("");
-          setUploadCategory("");
-          setUploadFile(null);
-        };
+  // 2. Get public URL
+  const { data } = supabase
+    .storage
+    .from("materials-files")
+    .getPublicUrl(fileName);
 
-        reader.readAsDataURL(uploadFile);
-      }}
+  // 3. Save to database
+  const { error: dbError } = await supabase
+    .from("materials")
+    .insert([
+      {
+        title: uploadTitle,
+        category: uploadCategory,
+        file_url: data.publicUrl
+      }
+    ]);
+
+  if (dbError) {
+    console.log(dbError);
+    return;
+  }
+
+  // 4. Refresh UI
+  fetchMaterials();
+
+  // 5. Reset inputs
+  setUploadTitle("");
+  setUploadCategory("");
+  setUploadFile(null);
+}} 
       style={{
         background: "#00d4ff",
         color: "black",
