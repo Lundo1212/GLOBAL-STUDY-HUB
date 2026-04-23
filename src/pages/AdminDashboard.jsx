@@ -1,152 +1,340 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "./supabaseClient";
 
 export default function AdminDashboard() {
 
-  const [materials, setMaterials] = useState(
-    JSON.parse(localStorage.getItem("materials")) || []
-  );
-
-  const [comments] = useState(
-    JSON.parse(localStorage.getItem("comments")) || []
-  );
+  // ================= STATES =================
+  const [materials, setMaterials] = useState([]);
+  const [comments, setComments] = useState([]);
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("MATHEMATICS AND PURE SCIENCES");
   const [file, setFile] = useState(null);
   const [editId, setEditId] = useState(null);
+  const [search, setSearch] = useState("");
 
   const categories = [
     "MATHEMATICS AND PURE SCIENCES",
     "ENGINEERING",
-    "INFORMATION COMMUNICATION AND TECHNOLOGY",
-    "TECHNICAL STUDIES",
-    "HUMAN RESOURCE STUDIES",
+    "ICT",
+    "TECHNICAL",
+    "HUMAN RESOURCE",
     "HEALTH SCIENCES"
   ];
 
-  const saveToStorage = (data) => {
-    localStorage.setItem("materials", JSON.stringify(data));
-    setMaterials(data);
+  // ================= FETCH MATERIALS =================
+  const fetchMaterials = async () => {
+    const { data, error } = await supabase
+      .from("materials")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) console.log("FETCH ERROR:", error);
+    else setMaterials(data || []);
   };
 
-  // ================= FIXED UPLOAD =================
-  const handleUpload = () => {
-    if (!title || !file) return;
+  // ================= FETCH COMMENTS =================
+  const fetchComments = async () => {
+    const { data, error } = await supabase
+      .from("comments")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    const reader = new FileReader();
+    if (error) console.log("COMMENTS ERROR:", error);
+    else setComments(data || []);
+  };
 
-    reader.onload = () => {
-      const newItem = {
-        id: Date.now(),
+  // ================= TEST CONNECTION =================
+  const testConnection = async () => {
+    const { data, error } = await supabase.from("materials").select("*");
+    console.log("TEST DATA:", data);
+    console.log("TEST ERROR:", error);
+  };
+
+  useEffect(() => {
+    fetchMaterials();
+    fetchComments();
+    testConnection();
+  }, []);
+
+  const handleUpload = async () => {
+  try {
+    console.log("UPLOAD STARTED");
+
+    if (!title) {
+      console.log("NO TITLE");
+      return;
+    }
+
+    if (!file) {
+      console.log("NO FILE SELECTED");
+      return;
+    }
+
+    console.log("FILE:", file);
+
+    const fileName = `${Date.now()}-${file.name}`;
+
+    console.log("UPLOADING TO STORAGE...");
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("materials-files")
+      .upload(fileName, file);
+
+    console.log("UPLOAD RESPONSE:", uploadData);
+    console.log("UPLOAD ERROR:", uploadError);
+
+    if (uploadError) {
+      console.log("STOPPED HERE (UPLOAD FAILED)");
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("materials-files")
+      .getPublicUrl(fileName);
+
+    console.log("URL DATA:", urlData);
+
+    const fileUrl = urlData?.publicUrl;
+
+    console.log("FINAL FILE URL:", fileUrl);
+
+    console.log("INSERTING INTO DB...");
+
+    const { data: insertData, error: dbError } = await supabase
+      .from("materials")
+      .insert([
+        {
+          title,
+          category,
+          file_url: fileUrl
+        }
+      ])
+      .select();
+
+    console.log("DB RESULT:", insertData, dbError);
+
+    setTitle("");
+    setFile(null);
+
+    fetchMaterials();
+
+  } catch (err) {
+    console.log("CRASH ERROR:", err);
+  }
+  if (!title || !file) {
+  
+    console.log("Missing title or file");
+    return;
+  }
+
+  const fileName = `${Date.now()}-${file.name}`;
+
+  // 1. Upload file
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from("materials-files")
+    .upload(fileName, file);
+
+  if (uploadError) {
+    console.log("UPLOAD ERROR:", uploadError);
+    return;
+  }
+
+  console.log("UPLOAD SUCCESS:", uploadData);
+
+  // 2. Get public URL
+  const { data: urlData } = supabase.storage
+  .from("materials-files")
+  .getPublicUrl(fileName);
+
+const fileUrl = urlData.publicUrl;
+
+if (!fileUrl) {
+  console.log("FAILED TO GET PUBLIC URL");
+  return;
+}
+  // 3. Insert into DB
+  const { data: insertData, error: dbError } = await supabase
+    .from("materials")
+    .insert([
+      {
         title,
         category,
-        fileURL: reader.result // ✅ IMPORTANT FIX
-      };
+        file_url: fileUrl
+      }
+    ])
+    .select();
 
-      const updated = [...materials, newItem];
-      saveToStorage(updated);
+  console.log("DB INSERT:", { insertData, dbError });
 
-      setTitle("");
-      setFile(null);
-    };
+  // 4. Reset
+  setTitle("");
+  setFile(null);
 
-    reader.readAsDataURL(file);
+  fetchMaterials();
+};
+
+  // ================= DELETE =================
+  const handleDelete = async (id) => {
+    await supabase.from("materials").delete().eq("id", id);
+    fetchMaterials();
   };
 
-  const handleDelete = (id) => {
-    const updated = materials.filter(m => m.id !== id);
-    saveToStorage(updated);
-  };
-
+  // ================= EDIT =================
   const handleEdit = (item) => {
     setEditId(item.id);
     setTitle(item.title);
     setCategory(item.category);
   };
 
-  const saveEdit = () => {
-    const updated = materials.map(m =>
-      m.id === editId ? { ...m, title, category } : m
-    );
+  const saveEdit = async () => {
+    await supabase
+      .from("materials")
+      .update({ title, category })
+      .eq("id", editId);
 
-    saveToStorage(updated);
     setEditId(null);
     setTitle("");
+    fetchMaterials();
   };
 
-  const [search, setSearch] = useState("");
-
+  // ================= SEARCH =================
   const filtered = materials.filter(m =>
-    m.title.toLowerCase().includes(search.toLowerCase()) ||
-    m.category.toLowerCase().includes(search.toLowerCase())
+    (m.title || "").toLowerCase().includes(search.toLowerCase()) ||
+    (m.category || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  // ================= OPEN FILE =================
   const openFile = (file) => {
-    if (!file) return;
-    window.open(file, "_blank");
+    if (file) window.open(file, "_blank");
   };
 
+  // ================= UI =================
   return (
-    <div style={{ padding: 20, background: "#000", color: "#fff", minHeight: "100vh" }}>
+    <div style={{
+      padding: 20,
+      background: "#000",
+      color: "#fff",
+      minHeight: "100vh"
+    }}>
 
-      <h1 style={{ color: "#1e90ff" }}>ADMIN DASHBOARD</h1>
+      {/* ================= TEST BUTTON ================= */}
+      <button
+        onClick={async () => {
+          const { data, error } = await supabase
+  .from("materials")
+  .insert([
+    {
+      title: "Test File",
+      category: "ICT",
+      file_url: "https://example.com/test.pdf"
+    }
+  ])
+  .select("*");
 
+          console.log("TEST INSERT:", { data, error });
+        }}
+        style={{
+          position: "fixed",
+          top: 10,
+          right: 10,
+          zIndex: 999999,
+          padding: 10,
+          background: "red",
+          color: "white",
+          border: "none"
+        }}
+      >
+        TEST INSERT
+      </button>
+
+      <h1 style={{ textAlign: "center", color: "#1e90ff" }}>
+        ADMIN DASHBOARD
+      </h1>
+
+      {/* SEARCH */}
       <input
         placeholder="Search materials..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{ padding: 10, marginBottom: 20, width: "100%" }}
+        style={{
+          padding: 10,
+          width: "100%",
+          maxWidth: 600,
+          margin: "20px auto",
+          display: "block"
+        }}
       />
 
       {/* UPLOAD */}
-      <div style={{ border: "1px solid #1e90ff", padding: 15 }}>
+      <div style={{
+        maxWidth: 800,
+        margin: "auto",
+        border: "1px solid #1e90ff",
+        padding: 20
+      }}>
 
         <h2>Upload Material</h2>
 
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" />
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Title"
+        />
 
-        <select value={category} onChange={e => setCategory(e.target.value)}>
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+        >
           {categories.map(c => <option key={c}>{c}</option>)}
         </select>
 
-        <input type="file" onChange={e => setFile(e.target.files[0])} />
+        <input
+          type="file"
+          onChange={e => setFile(e.target.files[0])}
+        />
 
-        {editId ? (
-          <button onClick={saveEdit}>Save Edit</button>
-        ) : (
-          <button onClick={handleUpload}>Upload</button>
-        )}
+        <button onClick={editId ? saveEdit : handleUpload}>
+          {editId ? "Save Edit" : "Upload"}
+        </button>
       </div>
 
       {/* MATERIALS */}
-      {filtered.map(item => (
-        <div key={item.id} style={{ border: "1px solid gray", marginTop: 10, padding: 10 }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+        gap: 10,
+        marginTop: 20
+      }}>
+        {filtered.map(item => (
+          <div key={item.id} style={{
+            background: "#111",
+            padding: 10,
+            borderRadius: 10
+          }}>
+            <h3>{item.title}</h3>
+            <p>{item.category}</p>
 
-          <h3>{item.title}</h3>
-          <p>{item.category}</p>
+            <button onClick={() => openFile(item.file_url)}>Read</button>
 
-          {/* READ */}
-          <button onClick={() => openFile(item.fileURL)}>
-            Read
-          </button>
+            <a href={item.file_url} download>
+              <button>Download</button>
+            </a>
 
-          {/* DOWNLOAD */}
-          <a href={item.fileURL} download>
-            <button>Download</button>
-          </a>
-
-          <button onClick={() => handleEdit(item)}>Edit</button>
-          <button onClick={() => handleDelete(item.id)}>Delete</button>
-
-        </div>
-      ))}
+            <button onClick={() => handleEdit(item)}>Edit</button>
+            <button onClick={() => handleDelete(item.id)}>Delete</button>
+          </div>
+        ))}
+      </div>
 
       {/* COMMENTS */}
       <h2>User Comments</h2>
 
       {comments.map(c => (
-        <div key={c.id}>
+        <div key={c.id} style={{
+          background: "#111",
+          margin: 5,
+          padding: 10
+        }}>
           <b>{c.name}</b>
           <p>{c.text}</p>
         </div>

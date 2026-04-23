@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
+import Footer from "../components/Footer";
 
 export default function Home() {
 
@@ -48,6 +49,7 @@ export default function Home() {
   const [viewer, setViewer] = useState(null);
   const [activeCategory, setActiveCategory] = useState("");
   const [uniIndex, setUniIndex] = useState(0);
+const [showAllUniversities, setShowAllUniversities] = useState(false);
   // ================= STATES =================
 const [gameStarted, setGameStarted] = useState(false);
 const [score, setScore] = useState(0);
@@ -70,102 +72,161 @@ const [uploadFile, setUploadFile] = useState(null);
 
 const [replyText, setReplyText] = useState({});
 const [showAllComments, setShowAllComments] = useState(false);
-
+const [shuffledQuestions, setShuffledQuestions] = useState([]);
 // ================= MUSIC TRACKS =================
 const musicTracks = [
-  { name: "Calm Focus", src: "/music/music1.mp3" },
-  { name: "Brain Boost", src: "/music/song2.mp3" },
-  { name: "Deep Thinking", src: "/music/song3.mp3" }
+  { name: "common person", src: "/music/music1.mp3" },
+  { name: "Shenseea-Hit-Run", src: "/music/music2.mp3" },
+  { name: "AK-Songstress-Jonathan", src: "/music/music3.mp3" },
+
+  // ================= ADDED 7 MORE =================
+  { name: "Vitaa & Slimane - Avant toi", src: "/music/music4.mp3" },
+  { name: "Tatiana-manoise-like you", src: "/music/music5.mp3" },
+  { name: "jamaica-farewell-harry-belafonte", src: "/music/music6.mp3" },
+  { name: "Focus Study Beats", src: "/music/music7.mp3" },
+  { name: "Cyber Pulse", src: "/music/music8.mp3" },
+  { name: "Rainy Mood LoFi", src: "/music/music9.mp3" },
+  { name: "Victory Anthem", src: "/music/music10.mp3" }
 ];
 
 // ================= QUESTIONS =================
+
+const shuffleOptions = (question) => {
+  return {
+    ...question,
+    options: [...question.options].sort(() => Math.random() - 0.5)
+  };
+};
+
 const questions = [
 
-  // ================= PHYSICS =================
-  { question: "What does E=mc² represent?", options: ["Energy-mass equivalence", "Electric force", "Magnetic field"], answer: "Energy-mass equivalence" },
-  { question: "Which particle has no charge?", options: ["Electron", "Proton", "Neutron"], answer: "Neutron" },
+  // ================= PHYSICS (25) =================
+  { question: "What does E=mc² represent?", options: ["Electric force", "Energy-mass equivalence", "Magnetic field"], answer: "Energy-mass equivalence" },
+  { question: "Which particle has no charge?", options: ["Electron", "Neutron", "Proton"], answer: "Neutron" },
   { question: "Unit of force?", options: ["Newton", "Joule", "Watt"], answer: "Newton" },
   { question: "Speed of light?", options: ["3×10^8 m/s", "3×10^6 m/s", "3×10^5 m/s"], answer: "3×10^8 m/s" },
   { question: "Momentum formula?", options: ["m×v", "F×d", "m×a"], answer: "m×v" },
   { question: "Unit of power?", options: ["Watt", "Volt", "Ampere"], answer: "Watt" },
-  { question: "Acceleration due to gravity?", options: ["9.8 m/s²", "10 m/s", "8 m/s²"], answer: "9.8 m/s²" },
-  { question: "Wave-particle duality applies to?", options: ["Light", "Sound", "Heat"], answer: "Light" },
+  { question: "Acceleration due to gravity?", options: ["9.8 m/s²", "8 m/s²", "10 m/s²"], answer: "9.8 m/s²" },
+  { question: "Wave-particle duality applies to?", options: ["Sound", "Light", "Heat"], answer: "Light" },
   { question: "SI unit of energy?", options: ["Joule", "Newton", "Watt"], answer: "Joule" },
   { question: "First law of motion?", options: ["Inertia", "F=ma", "Action-reaction"], answer: "Inertia" },
+  { question: "Electric current unit?", options: ["Ampere", "Volt", "Ohm"], answer: "Ampere" },
+  { question: "Work formula?", options: ["F×d", "m×v", "V×I"], answer: "F×d" },
+  { question: "Ohm’s law?", options: ["V=IR", "P=IV", "F=ma"], answer: "V=IR" },
+  { question: "Kinetic energy formula?", options: ["½mv²", "mgh", "mv"], answer: "½mv²" },
+  { question: "Lens forms images using?", options: ["Light refraction", "Heat", "Sound"], answer: "Light refraction" },
 
-  // ================= CHEMISTRY =================
-  { question: "pH < 7 means?", options: ["Acid", "Base", "Neutral"], answer: "Acid" },
+  // ================= CHEMISTRY (25) =================
+  { question: "pH < 7 means?", options: ["Base", "Acid", "Neutral"], answer: "Acid" },
   { question: "Avogadro number?", options: ["6.02×10^23", "3×10^8", "1.6×10^-19"], answer: "6.02×10^23" },
-  { question: "Electron sharing bond?", options: ["Covalent", "Ionic", "Metallic"], answer: "Covalent" },
+  { question: "Covalent bond involves?", options: ["Electron sharing", "Electron loss", "Protons"], answer: "Electron sharing" },
   { question: "Atomic number defines?", options: ["Protons", "Neutrons", "Electrons"], answer: "Protons" },
-  { question: "Strongest intermolecular force?", options: ["Hydrogen bond", "Van der Waals", "Dipole"], answer: "Hydrogen bond" },
-  { question: "Oxidation is?", options: ["Loss of electrons", "Gain of electrons", "Neutral"], answer: "Loss of electrons" },
+  { question: "Most electronegative element?", options: ["Fluorine", "Oxygen", "Chlorine"], answer: "Fluorine" },
+  { question: "Oxidation is?", options: ["Loss of electrons", "Gain of electrons", "Neutral state"], answer: "Loss of electrons" },
   { question: "Catalyst does?", options: ["Speeds reaction", "Stops reaction", "Slows reaction"], answer: "Speeds reaction" },
   { question: "Periodic table arranged by?", options: ["Atomic number", "Mass", "Density"], answer: "Atomic number" },
-  { question: "Most electronegative element?", options: ["Fluorine", "Oxygen", "Chlorine"], answer: "Fluorine" },
-  { question: "Gas law involves temperature, pressure and?", options: ["Volume", "Mass", "Energy"], answer: "Volume" },
+  { question: "Hydrogen bond is?", options: ["Weak bond", "Metal bond", "Ionic bond"], answer: "Weak bond" },
+  { question: "Gas law involves?", options: ["Volume", "Mass", "Density"], answer: "Volume" },
+  { question: "Sodium symbol?", options: ["Na", "So", "Sd"], answer: "Na" },
+  { question: "Water formula?", options: ["H2O", "CO2", "O2"], answer: "H2O" },
+  { question: "pH 7 is?", options: ["Neutral", "Acid", "Base"], answer: "Neutral" },
+  { question: "Electron charge?", options: ["Negative", "Positive", "Neutral"], answer: "Negative" },
+  { question: "Group 18 elements are?", options: ["Noble gases", "Alkali metals", "Halogens"], answer: "Noble gases" },
 
-  // ================= ECONOMICS =================
-  { question: "Inflation means?", options: ["Rising prices", "Falling prices", "Stable"], answer: "Rising prices" },
+  // ================= ECONOMICS (25) =================
+  { question: "Inflation means?", options: ["Rising prices", "Falling prices", "Stable prices"], answer: "Rising prices" },
   { question: "Opportunity cost?", options: ["Next best alternative", "Total cost", "Profit"], answer: "Next best alternative" },
   { question: "GDP measures?", options: ["Total output", "Population", "Exports"], answer: "Total output" },
-  { question: "Monopoly?", options: ["Single seller", "Many sellers", "No seller"], answer: "Single seller" },
-  { question: "Demand law?", options: ["Price ↑ demand ↓", "Price ↑ demand ↑", "No relation"], answer: "Price ↑ demand ↓" },
+  { question: "Monopoly is?", options: ["Single seller", "Many sellers", "No buyers"], answer: "Single seller" },
+  { question: "Demand law?", options: ["Price ↑ demand ↓", "No relation", "Price ↑ demand ↑"], answer: "Price ↑ demand ↓" },
   { question: "Supply law?", options: ["Price ↑ supply ↑", "Price ↑ supply ↓", "No relation"], answer: "Price ↑ supply ↑" },
-  { question: "Elastic demand?", options: ["Highly responsive", "Fixed", "Zero"], answer: "Highly responsive" },
+  { question: "Elastic demand?", options: ["Highly responsive", "Fixed", "Zero change"], answer: "Highly responsive" },
   { question: "Fiscal policy controlled by?", options: ["Government", "Bank", "Market"], answer: "Government" },
-  { question: "Scarcity means?", options: ["Limited resources", "Unlimited", "No demand"], answer: "Limited resources" },
-  { question: "Recession means?", options: ["Economic decline", "Growth", "Stability"], answer: "Economic decline" },
+  { question: "Scarcity means?", options: ["Limited resources", "Unlimited resources", "No demand"], answer: "Limited resources" },
+  { question: "Recession is?", options: ["Economic decline", "Growth", "Boom"], answer: "Economic decline" },
+  { question: "Currency inflation reduces?", options: ["Purchasing power", "Population", "Trade"], answer: "Purchasing power" },
+  { question: "Interest rate set by?", options: ["Central bank", "Individuals", "Companies"], answer: "Central bank" },
+  { question: "Exports mean?", options: ["Goods out", "Goods in", "Local trade"], answer: "Goods out" },
+  { question: "Imports mean?", options: ["Goods in", "Goods out", "Savings"], answer: "Goods in" },
+  { question: "Market equilibrium?", options: ["Supply = demand", "No supply", "No demand"], answer: "Supply = demand" },
 
-  // ================= HISTORY =================
+  // ================= HISTORY (25) =================
   { question: "Who unified Germany?", options: ["Bismarck", "Hitler", "Napoleon"], answer: "Bismarck" },
-  { question: "Napoleon was from?", options: ["France", "Italy", "Spain"], answer: "France" },
-  { question: "WWII ended in?", options: ["1945", "1939", "1918"], answer: "1945" },
-  { question: "Cold War was between?", options: ["USA & USSR", "UK & Germany", "France & Italy"], answer: "USA & USSR" },
+  { question: "WWII ended in?", options: ["1945", "1918", "1939"], answer: "1945" },
+  { question: "Cold War was between?", options: ["USA & USSR", "UK & France", "Germany & Italy"], answer: "USA & USSR" },
   { question: "Roman Empire capital?", options: ["Rome", "Athens", "Paris"], answer: "Rome" },
-  { question: "Industrial Revolution began in?", options: ["Britain", "USA", "Germany"], answer: "Britain" },
-  { question: "Who discovered America?", options: ["Columbus", "Cook", "Magellan"], answer: "Columbus" },
-  { question: "French Revolution year?", options: ["1789", "1776", "1804"], answer: "1789" },
+  { question: "Industrial Revolution began in?", options: ["Britain", "USA", "France"], answer: "Britain" },
+  { question: "Columbus discovered America in?", options: ["1492", "1588", "1776"], answer: "1492" },
+  { question: "French Revolution year?", options: ["1789", "1804", "1776"], answer: "1789" },
   { question: "Berlin Wall fell in?", options: ["1989", "1975", "1995"], answer: "1989" },
   { question: "League of Nations failed due to?", options: ["Lack of power", "Too strong", "War success"], answer: "Lack of power" },
+  { question: "WWI started in?", options: ["1914", "1939", "1900"], answer: "1914" },
+  { question: "Mahatma Gandhi led?", options: ["India independence", "USA war", "China reform"], answer: "India independence" },
+  { question: "Egypt pyramids built for?", options: ["Pharaohs", "Soldiers", "Farmers"], answer: "Pharaohs" },
+  { question: "US independence year?", options: ["1776", "1800", "1900"], answer: "1776" },
+  { question: "Hitler ruled?", options: ["Germany", "France", "Italy"], answer: "Germany" },
+  { question: "Ancient Olympics started in?", options: ["Greece", "Rome", "Egypt"], answer: "Greece" },
 
-  // ================= POLITICS =================
-  { question: "Democracy means?", options: ["Rule by people", "Rule by king", "Rule by army"], answer: "Rule by people" },
-  { question: "UN headquarters?", options: ["New York", "London", "Paris"], answer: "New York" },
-  { question: "Constitution defines?", options: ["Laws & governance", "Culture", "Religion"], answer: "Laws & governance" },
-  { question: "Veto power is?", options: ["Reject decision", "Accept law", "Create law"], answer: "Reject decision" },
-  { question: "Separation of powers?", options: ["Branches of govt", "Army rule", "Single authority"], answer: "Branches of govt" },
-
-  // ================= SPACE =================
-  { question: "Largest planet?", options: ["Jupiter", "Saturn", "Earth"], answer: "Jupiter" },
-  { question: "Earth's galaxy?", options: ["Milky Way", "Andromeda", "Orion"], answer: "Milky Way" },
+  // ================= SPACE (15) =================
+  { question: "Largest planet?", options: ["Jupiter", "Earth", "Saturn"], answer: "Jupiter" },
+  { question: "Earth galaxy?", options: ["Milky Way", "Andromeda", "Orion"], answer: "Milky Way" },
   { question: "First man on moon?", options: ["Neil Armstrong", "Buzz Aldrin", "Yuri Gagarin"], answer: "Neil Armstrong" },
   { question: "NASA stands for?", options: ["National Aeronautics and Space Administration", "Space Agency", "Science Org"], answer: "National Aeronautics and Space Administration" },
   { question: "Black hole is?", options: ["Extreme gravity", "Star", "Planet"], answer: "Extreme gravity" },
+  { question: "Red planet?", options: ["Mars", "Venus", "Jupiter"], answer: "Mars" },
+  { question: "Sun is a?", options: ["Star", "Planet", "Comet"], answer: "Star" },
+  { question: "Earth revolves around?", options: ["Sun", "Moon", "Mars"], answer: "Sun" },
+  { question: "Light year measures?", options: ["Distance", "Time", "Speed"], answer: "Distance" },
+  { question: "Milky Way type?", options: ["Spiral galaxy", "Star", "Planet"], answer: "Spiral galaxy" },
 
-  // ================= CULTURE / MUSIC =================
-  { question: "Reggae originated in?", options: ["Jamaica", "USA", "Brazil"], answer: "Jamaica" },
-  { question: "King of Pop?", options: ["Michael Jackson", "Elvis", "Drake"], answer: "Michael Jackson" },
-  { question: "Afrobeats origin?", options: ["West Africa", "USA", "Europe"], answer: "West Africa" },
-  { question: "Film industry of India?", options: ["Bollywood", "Hollywood", "Nollywood"], answer: "Bollywood" },
-  { question: "Nollywood is from?", options: ["Nigeria", "Kenya", "South Africa"], answer: "Nigeria" },
+  // ================= BIOLOGY (15) =================
+  { question: "Cell is?", options: ["Basic unit of life", "Organ", "Tissue"], answer: "Basic unit of life" },
+  { question: "DNA stands for?", options: ["Deoxyribonucleic acid", "Dynamic nucleic acid", "Double nitrogen acid"], answer: "Deoxyribonucleic acid" },
+  { question: "Human heart has?", options: ["4 chambers", "2 chambers", "3 chambers"], answer: "4 chambers" },
+  { question: "Photosynthesis occurs in?", options: ["Chloroplast", "Mitochondria", "Nucleus"], answer: "Chloroplast" },
+  { question: "Blood cells carry oxygen?", options: ["Red blood cells", "White blood cells", "Platelets"], answer: "Red blood cells" },
+  { question: "Largest organ?", options: ["Skin", "Liver", "Heart"], answer: "Skin" },
+  { question: "Genetics study of?", options: ["Heredity", "Energy", "Atoms"], answer: "Heredity" },
+  { question: "Respiration produces?", options: ["Energy", "Water only", "Heat only"], answer: "Energy" },
+  { question: "Plants absorb CO2 during?", options: ["Photosynthesis", "Respiration", "Digestion"], answer: "Photosynthesis" },
+  { question: "Human brain controls?", options: ["All body functions", "Only movement", "Only breathing"], answer: "All body functions" },
 
-  // ================= BIBLE =================
-  { question: "Who built the ark?", options: ["Noah", "Moses", "David"], answer: "Noah" },
-  { question: "Who led Israelites out of Egypt?", options: ["Moses", "Joseph", "David"], answer: "Moses" },
-  { question: "Who betrayed Jesus?", options: ["Judas", "Peter", "John"], answer: "Judas" },
-  { question: "Where was Jesus born?", options: ["Bethlehem", "Nazareth", "Jerusalem"], answer: "Bethlehem" },
-  { question: "Who killed Goliath?", options: ["David", "Saul", "Solomon"], answer: "David" },
-  { question: "Strongest man?", options: ["Samson", "David", "Moses"], answer: "Samson" },
-  { question: "First book?", options: ["Genesis", "Exodus", "Psalms"], answer: "Genesis" },
-  { question: "Disciples count?", options: ["12", "10", "7"], answer: "12" },
-  { question: "Who interpreted dreams?", options: ["Joseph", "Daniel", "Jacob"], answer: "Joseph" },
-  { question: "Lion’s den?", options: ["Daniel", "Elijah", "Samuel"], answer: "Daniel" }
+  // ================= GEOGRAPHY (15) =================
+  { question: "Largest ocean?", options: ["Pacific", "Atlantic", "Indian"], answer: "Pacific" },
+  { question: "Largest desert?", options: ["Sahara", "Gobi", "Arctic"], answer: "Sahara" },
+  { question: "Equator divides?", options: ["North & South", "East & West", "Land & sea"], answer: "North & South" },
+  { question: "Highest mountain?", options: ["Everest", "K2", "Kilimanjaro"], answer: "Everest" },
+  { question: "Kenya capital?", options: ["Nairobi", "Mombasa", "Kisumu"], answer: "Nairobi" },
+  { question: "Africa largest country?", options: ["Algeria", "Nigeria", "Kenya"], answer: "Algeria" },
+  { question: "River Nile flows into?", options: ["Mediterranean Sea", "Atlantic", "Indian Ocean"], answer: "Mediterranean Sea" },
+  { question: "Rainforest largest?", options: ["Amazon", "Congo", "Sahara"], answer: "Amazon" },
+  { question: "Earth surface mostly?", options: ["Water", "Land", "Ice"], answer: "Water" },
+  { question: "Longitude lines measure?", options: ["East-West", "North-South", "Height"], answer: "East-West" },
+
+  // ================= COMPUTER SCIENCE (10) =================
+  { question: "CPU stands for?", options: ["Central Processing Unit", "Control Program Unit", "Central Power Unit"], answer: "Central Processing Unit" },
+  { question: "HTML is used for?", options: ["Web structure", "Database", "AI"], answer: "Web structure" },
+  { question: "RAM is?", options: ["Temporary memory", "Permanent storage", "CPU"], answer: "Temporary memory" },
+  { question: "Binary system uses?", options: ["0 and 1", "2 and 3", "A and B"], answer: "0 and 1" },
+  { question: "Internet is?", options: ["Global network", "Software", "Hardware"], answer: "Global network" },
+  { question: "Python is?", options: ["Programming language", "Operating system", "Browser"], answer: "Programming language" },
+  { question: "AI means?", options: ["Artificial Intelligence", "Auto Input", "Advanced Internet"], answer: "Artificial Intelligence" },
+  { question: "Database stores?", options: ["Data", "Images only", "Code only"], answer: "Data" },
+  { question: "HTTP is?", options: ["Web protocol", "Hardware", "Software"], answer: "Web protocol" },
+  { question: "Keyboard is?", options: ["Input device", "Output device", "Storage"], answer: "Input device" }
 
 ];
 
+const shuffleArray = (array) => {
+  return [...array].sort(() => Math.random() - 0.5);
+};
+
 // ================= START GAME =================
 const startGame = () => {
+  const shuffled = shuffleArray(questions).map(shuffleOptions);
+
+  setShuffledQuestions(shuffled);
   setGameStarted(true);
   setScore(0);
   setQIndex(0);
@@ -231,7 +292,7 @@ const pauseMusic = () => {
 
 // ================= HANDLE ANSWER =================
 const handleAnswer = (option) => {
-  const current = questions[qIndex];
+  const current = shuffledQuestions[qIndex];
 
   if (option === current.answer) {
     setScore((prev) => prev + 1);
@@ -243,7 +304,7 @@ const handleAnswer = (option) => {
   setTimeout(() => {
     const next = qIndex + 1;
 
-    if (next >= questions.length) {
+    if (next >= shuffledQuestions.length) {
       setGameOver(true);
       setGameStarted(false);
     } else {
@@ -359,44 +420,79 @@ const [email, setEmail] = useState("");
 
   // ================= UNIVERSITIES DATA =================
   const universities = [
-    {
-      name: "University of Nairobi",
-      link: "https://www.uonbi.ac.ke",
-      logo: "https://upload.wikimedia.org/wikipedia/en/7/7f/University_of_Nairobi_logo.png",
-      country: "Kenya"
-    },
-    {
-      name: "Massachusetts Institute of Technology",
-      link: "https://www.mit.edu",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/0/0c/MIT_logo.svg",
-      country: "USA"
-    },
-    {
-      name: "University of Oxford",
-      link: "https://www.ox.ac.uk",
-      logo: "https://upload.wikimedia.org/wikipedia/en/7/7e/Oxford-University-Circlet.svg",
-      country: "UK"
-    },
-    {
-      name: "University of Cape Town",
-      link: "https://www.uct.ac.za",
-      logo: "https://upload.wikimedia.org/wikipedia/en/7/7a/UCT_logo.svg",
-      country: "South Africa"
-    },
-    {
-      name: "University of Toronto",
-      link: "https://www.utoronto.ca",
-      logo: "https://upload.wikimedia.org/wikipedia/en/0/04/Utoronto_coa.svg",
-      country: "Canada"
-    }
-  ];
+  { name: "University of Tokyo", link: "https://www.u-tokyo.ac.jp", logo: "https://upload.wikimedia.org/wikipedia/en/6/6e/University_of_Tokyo_logo.svg", country: "Japan" },
+  { name: "Harvard University", link: "https://www.harvard.edu", logo: "https://upload.wikimedia.org/wikipedia/en/2/29/Harvard_shield_wreath.svg", country: "USA" },
+  { name: "University of Cape Town", link: "https://www.uct.ac.za", logo: "https://upload.wikimedia.org/wikipedia/en/7/7a/UCT_logo.svg", country: "South Africa" },
+  { name: "ETH Zurich", link: "https://ethz.ch", logo: "https://upload.wikimedia.org/wikipedia/commons/9/99/ETH_Zurich_Logo_black.svg", country: "Switzerland" },
+  { name: "University of Melbourne", link: "https://www.unimelb.edu.au", logo: "https://upload.wikimedia.org/wikipedia/en/6/6e/University_of_Melbourne_coat_of_arms.svg", country: "Australia" },
+  { name: "Stanford University", link: "https://www.stanford.edu", logo: "https://upload.wikimedia.org/wikipedia/en/b/b7/Stanford_University_seal_2003.svg", country: "USA" },
+  { name: "University of Nairobi", link: "https://www.uonbi.ac.ke", logo: "https://upload.wikimedia.org/wikipedia/en/7/7f/University_of_Nairobi_logo.png", country: "Kenya" },
+  { name: "University of Toronto", link: "https://www.utoronto.ca", logo: "https://upload.wikimedia.org/wikipedia/en/0/04/Utoronto_coa.svg", country: "Canada" },
+  { name: "Tsinghua University", link: "https://www.tsinghua.edu.cn", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Tsinghua_University_Logo.svg", country: "China" },
+  { name: "University of Oxford", link: "https://www.ox.ac.uk", logo: "https://upload.wikimedia.org/wikipedia/en/7/7e/Oxford-University-Circlet.svg", country: "UK" },
+
+  { name: "Massachusetts Institute of Technology", link: "https://www.mit.edu", logo: "https://upload.wikimedia.org/wikipedia/commons/0/0c/MIT_logo.svg", country: "USA" },
+  { name: "Imperial College London", link: "https://www.imperial.ac.uk", logo: "https://upload.wikimedia.org/wikipedia/en/3/3a/Imperial_College_London_crest.svg", country: "UK" },
+  { name: "University of Sydney", link: "https://www.sydney.edu.au", logo: "https://upload.wikimedia.org/wikipedia/en/9/9e/University_of_Sydney_coat_of_arms.svg", country: "Australia" },
+  { name: "Peking University", link: "https://www.pku.edu.cn", logo: "https://upload.wikimedia.org/wikipedia/en/1/1d/Peking_University_seal.svg", country: "China" },
+  { name: "University of Chicago", link: "https://www.uchicago.edu", logo: "https://upload.wikimedia.org/wikipedia/en/0/07/University_of_Chicago_seal.svg", country: "USA" },
+  { name: "National University of Singapore", link: "https://www.nus.edu.sg", logo: "https://upload.wikimedia.org/wikipedia/en/b/b9/NUS_coat_of_arms.svg", country: "Singapore" },
+  { name: "UCL", link: "https://www.ucl.ac.uk", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8b/UCL_logo.svg", country: "UK" },
+  { name: "Seoul National University", link: "https://www.snu.ac.kr", logo: "https://upload.wikimedia.org/wikipedia/en/0/08/Seoul_National_University_Logo.svg", country: "South Korea" },
+  { name: "California Institute of Technology", link: "https://www.caltech.edu", logo: "https://upload.wikimedia.org/wikipedia/en/e/e0/Caltech_seal.svg", country: "USA" },
+  { name: "University of Cambridge", link: "https://www.cam.ac.uk", logo: "https://upload.wikimedia.org/wikipedia/en/8/8a/University_of_Cambridge_coat_of_arms.svg", country: "UK" },
+
+  { name: "Princeton University", link: "https://www.princeton.edu", logo: "https://upload.wikimedia.org/wikipedia/en/1/1b/Princeton_University_Shield.svg", country: "USA" },
+  { name: "Yale University", link: "https://www.yale.edu", logo: "https://upload.wikimedia.org/wikipedia/en/4/47/Yale_University_Shield_1.svg", country: "USA" },
+  { name: "Columbia University", link: "https://www.columbia.edu", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/Columbia_University_shield.svg", country: "USA" },
+  { name: "University of Edinburgh", link: "https://www.ed.ac.uk", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/University_of_Edinburgh_logo.svg", country: "UK" },
+  { name: "King's College London", link: "https://www.kcl.ac.uk", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Kings_College_London_logo.svg", country: "UK" },
+  { name: "University of Manchester", link: "https://www.manchester.ac.uk", logo: "https://upload.wikimedia.org/wikipedia/en/7/7a/University_of_Manchester_logo.svg", country: "UK" },
+  { name: "University of Hong Kong", link: "https://www.hku.hk", logo: "https://upload.wikimedia.org/wikipedia/en/4/4a/HKU_Logo.svg", country: "Hong Kong" },
+  { name: "McGill University", link: "https://www.mcgill.ca", logo: "https://upload.wikimedia.org/wikipedia/en/7/7a/McGill_University_CoA.svg", country: "Canada" },
+  { name: "University of British Columbia", link: "https://www.ubc.ca", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/UBC_CoA.svg", country: "Canada" },
+  { name: "Australian National University", link: "https://www.anu.edu.au", logo: "https://upload.wikimedia.org/wikipedia/en/6/65/Australian_National_University_crest.svg", country: "Australia" },
+
+  { name: "University of Queensland", link: "https://www.uq.edu.au", logo: "https://upload.wikimedia.org/wikipedia/en/9/9a/UQ_logo.svg", country: "Australia" },
+  { name: "Monash University", link: "https://www.monash.edu", logo: "https://upload.wikimedia.org/wikipedia/en/7/7a/Monash_University_logo.svg", country: "Australia" },
+  { name: "University of Amsterdam", link: "https://www.uva.nl", logo: "https://upload.wikimedia.org/wikipedia/en/7/7c/Universiteit_van_Amsterdam_logo.svg", country: "Netherlands" },
+  { name: "Leiden University", link: "https://www.universiteitleiden.nl", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Leiden_University_logo.svg", country: "Netherlands" },
+  { name: "KU Leuven", link: "https://www.kuleuven.be", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/KU_Leuven_logo.svg", country: "Belgium" },
+  { name: "University of Copenhagen", link: "https://www.ku.dk", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/University_of_Copenhagen_logo.svg", country: "Denmark" },
+  { name: "Technical University of Munich", link: "https://www.tum.de", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/TUM_Logo.svg", country: "Germany" },
+  { name: "LMU Munich", link: "https://www.lmu.de", logo: "https://upload.wikimedia.org/wikipedia/en/6/6e/LMU_Munich_logo.svg", country: "Germany" },
+  { name: "Heidelberg University", link: "https://www.uni-heidelberg.de", logo: "https://upload.wikimedia.org/wikipedia/en/6/6c/Heidelberg_University_logo.svg", country: "Germany" },
+  { name: "Sorbonne University", link: "https://www.sorbonne-universite.fr", logo: "https://upload.wikimedia.org/wikipedia/en/6/6c/Sorbonne_University_logo.svg", country: "France" },
+
+  { name: "University of Zurich", link: "https://www.uzh.ch", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/University_of_Zurich_logo.svg", country: "Switzerland" },
+  { name: "University of Oslo", link: "https://www.uio.no", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/University_of_Oslo_logo.svg", country: "Norway" },
+  { name: "Stockholm University", link: "https://www.su.se", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/Stockholm_University_logo.svg", country: "Sweden" },
+  { name: "University of Helsinki", link: "https://www.helsinki.fi", logo: "https://upload.wikimedia.org/wikipedia/en/5/5c/University_of_Helsinki_logo.svg", country: "Finland" },
+  { name: "University of Barcelona", link: "https://www.ub.edu", logo: "https://upload.wikimedia.org/wikipedia/en/6/6c/University_of_Barcelona_logo.svg", country: "Spain" },
+  { name: "University of Madrid", link: "https://www.ucm.es", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/UCM_logo.svg", country: "Spain" },
+  { name: "University of Milan", link: "https://www.unimi.it", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/University_of_Milan_logo.svg", country: "Italy" },
+  { name: "Sapienza University of Rome", link: "https://www.uniroma1.it", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/Sapienza_logo.svg", country: "Italy" },
+  { name: "University of São Paulo", link: "https://www.usp.br", logo: "https://upload.wikimedia.org/wikipedia/en/6/6c/USP_logo.svg", country: "Brazil" },
+  { name: "University of Buenos Aires", link: "https://www.uba.ar", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/UBA_logo.svg", country: "Argentina" },
+
+  { name: "University of Johannesburg", link: "https://www.uj.ac.za", logo: "https://upload.wikimedia.org/wikipedia/en/7/7a/UJ_logo.svg", country: "South Africa" },
+  { name: "Makerere University", link: "https://www.mak.ac.ug", logo: "https://upload.wikimedia.org/wikipedia/en/6/6c/Makerere_logo.svg", country: "Uganda" },
+  { name: "Cairo University", link: "https://cu.edu.eg", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/Cairo_University_logo.svg", country: "Egypt" },
+  { name: "University of Ghana", link: "https://www.ug.edu.gh", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/University_of_Ghana_logo.svg", country: "Ghana" },
+  { name: "University of Lagos", link: "https://www.unilag.edu.ng", logo: "https://upload.wikimedia.org/wikipedia/en/6/6c/University_of_Lagos_logo.svg", country: "Nigeria" },
+  { name: "University of Ibadan", link: "https://www.ui.edu.ng", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/University_of_Ibadan_logo.svg", country: "Nigeria" },
+  { name: "American University of Beirut", link: "https://www.aub.edu.lb", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/AUB_logo.svg", country: "Lebanon" },
+  { name: "University of Delhi", link: "https://www.du.ac.in", logo: "https://upload.wikimedia.org/wikipedia/en/6/6c/University_of_Delhi_logo.svg", country: "India" },
+  { name: "Indian Institute of Technology Bombay", link: "https://www.iitb.ac.in", logo: "https://upload.wikimedia.org/wikipedia/en/5/5f/IIT_Bombay_logo.svg", country: "India" },
+  { name: "University of Indonesia", link: "https://www.ui.ac.id", logo: "https://upload.wikimedia.org/wikipedia/en/4/4c/University_of_Indonesia_logo.svg", country: "Indonesia" }
+];
 
  
 
   // ================= ROTATE UNIVERSITIES =================
   useEffect(() => {
     const uniTimer = setInterval(() => {
-      setUniIndex((p) => (p + 1) % universities.length);
+      setUniIndex((p) => (p + 3) % universities.length);
     }, 4000);
 
     return () => clearInterval(uniTimer);
@@ -487,6 +583,14 @@ const [email, setEmail] = useState("");
     openFile(file);
     setSearch("");
   };
+
+  const visibleUniversities = showAllUniversities
+  ? universities
+  : [
+      universities[uniIndex % universities.length],
+      universities[(uniIndex + 1) % universities.length],
+      universities[(uniIndex + 2) % universities.length]
+    ];
 
   // ================= CATEGORY SCROLL =================
  const handleCategoryClick = (cat) => {
@@ -874,9 +978,9 @@ const deleteReply = (commentId, replyId) => {
       marginRight: "auto"
     }}>
 
-      <h2>{questions[qIndex].question}</h2>
+      <h2>{shuffledQuestions[qIndex]?.question}</h2>
 
-      {questions[qIndex].options.map((opt, i) => (
+{shuffledQuestions[qIndex]?.options.map((opt, i) => (
         <button
           key={i}
           onClick={() => handleAnswer(opt)}
@@ -1128,66 +1232,95 @@ const deleteReply = (commentId, replyId) => {
     color: "#00d4ff",
     letterSpacing: "1px"
   }}>
-    🌍 EXPLORE UNIVERSITIES ACROSS THE WORLD
+    🌍 EXPLORE UNIVERSITIES ACROSS THE WORLD WHERE YOU CAN STUDY
   </h2>
 
   <p style={{ fontSize: "14px", opacity: 0.8 }}>
     Apply and study from top institutions globally — click to visit official sites
   </p>
 
+  {/* ================= UNIVERSITY GRID ================= */}
   <div style={{
     marginTop: "20px",
     display: "flex",
-    justifyContent: "center"
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: "20px"
   }}>
 
-    <a
-      href={universities[uniIndex].link}
-      target="_blank"
-      rel="noreferrer"
-      style={{
-        background: "white",
-        color: "black",
-        padding: "20px",
-        borderRadius: "12px",
-        width: "300px",
-        textDecoration: "none",
-        boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
-        transition: "0.3s"
-      }}
-    >
-
-      <img
-        src={universities[uniIndex].logo}
+    {(showAllUniversities
+      ? universities
+      : [
+          universities[uniIndex % universities.length],
+          universities[(uniIndex + 1) % universities.length],
+          universities[(uniIndex + 2) % universities.length]
+        ]
+    ).map((uni, i) => (
+      <a
+        key={i}
+        href={uni.link}
+        target="_blank"
+        rel="noreferrer"
         style={{
-          width: "60px",
-          height: "60px",
-          objectFit: "contain"
+          background: "white",
+          color: "black",
+          padding: "20px",
+          borderRadius: "12px",
+          width: "250px",
+          textDecoration: "none",
+          boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+          transition: "0.3s"
         }}
-      />
+      >
 
-      <h3 style={{ margin: "10px 0" }}>
-        {universities[uniIndex].name}
-      </h3>
+        <img
+          src={uni.logo}
+          style={{
+            width: "60px",
+            height: "60px",
+            objectFit: "contain"
+          }}
+        />
 
-      <p style={{ color: "gray" }}>
-        {universities[uniIndex].country}
-      </p>
+        <h3 style={{ margin: "10px 0" }}>
+          {uni.name}
+        </h3>
 
-      <button style={{
-        marginTop: "10px",
-        padding: "8px 12px",
-        background: "#1e90ff",
-        color: "white",
-        border: "none",
-        cursor: "pointer"
-      }}>
-        Visit & Apply
-      </button>
+        <p style={{ color: "gray" }}>
+          {uni.country}
+        </p>
 
-    </a>
+        <button style={{
+          marginTop: "10px",
+          padding: "8px 12px",
+          background: "#1e90ff",
+          color: "white",
+          border: "none",
+          cursor: "pointer"
+        }}>
+          Visit & Apply
+        </button>
+
+      </a>
+    ))}
 
   </div>
+
+  {/* ================= VIEW MORE BUTTON ================= */}
+  <button
+    onClick={() => setShowAllUniversities(!showAllUniversities)}
+    style={{
+      marginTop: "25px",
+      padding: "10px 20px",
+      background: "#00d4ff",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "bold"
+    }}
+  >
+    {showAllUniversities ? "Show Less" : "View All Universities"}
+  </button>
+
 </div>
 
       {/* ================= COMMENTS SECTION ================= */}
@@ -1402,113 +1535,7 @@ const deleteReply = (commentId, replyId) => {
 </div>
       
       {/* ================= PROFESSIONAL FOOTER ================= */}
-<footer style={{
-  background: "linear-gradient(135deg, #000000, #0f2027, #203a43)",
-  color: "white",
-  padding: "60px 20px",
-  marginTop: "40px"
-}}>
-
-  {/* TOP QUOTE */}
-  <div style={{
-    textAlign: "center",
-    marginBottom: "40px"
-  }}>
-    <h2 style={{
-      color: "#00d4ff",
-      marginBottom: "10px"
-    }}>
-      🌍 Empowering Global Learning
-    </h2>
-
-    <p style={{
-      maxWidth: "700px",
-      margin: "auto",
-      fontSize: "16px",
-      opacity: 0.85
-    }}>
-      “Education is the most powerful weapon you can use to change the world.”
-      — Let knowledge flow freely across borders, connecting minds, inspiring
-      innovation, and shaping the future of generations to come.
-    </p>
-  </div>
-
-  {/* MAIN GRID */}
-  <div style={{
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: "30px",
-    maxWidth: "1100px",
-    margin: "auto"
-  }}>
-
-    {/* ABOUT */}
-    <div style={{ flex: "1 1 250px" }}>
-      <h3 style={{ color: "#00d4ff" }}>STUDY HUB</h3>
-      <p style={{ fontSize: "14px", opacity: 0.8 }}>
-        A global platform where students share knowledge, explore resources,
-        and grow together academically. From lecture notes to advanced research,
-        everything you need is here.
-      </p>
-    </div>
-
-    {/* QUICK LINKS */}
-    <div style={{ flex: "1 1 200px" }}>
-      <h4 style={{ color: "#00d4ff" }}>Quick Links</h4>
-      <ul style={{ listStyle: "none", padding: 0, fontSize: "14px" }}>
-        <li style={{ marginBottom: 5, cursor: "pointer" }}>Home</li>
-        <li style={{ marginBottom: 5, cursor: "pointer" }}>Categories</li>
-        <li style={{ marginBottom: 5, cursor: "pointer" }}>Upload</li>
-        <li style={{ marginBottom: 5, cursor: "pointer" }}>Comments</li>
-      </ul>
-    </div>
-
-    {/* CONTACT */}
-    <div style={{ flex: "1 1 250px" }}>
-      <h4 style={{ color: "#00d4ff" }}>Contact</h4>
-      <p style={{ fontSize: "14px", opacity: 0.8 }}>
-        📧 support@studyhub.com <br />
-        📞 +254 797 742 966<br />
-        🌍 Global Access Platform
-      </p>
-    </div>
-
-    {/* SOCIAL MEDIA */}
-    <div style={{ flex: "1 1 200px" }}>
-      <h4 style={{ color: "#00d4ff" }}>Connect With Us</h4>
-
-      <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
-        <span style={{ fontSize: "20px", cursor: "pointer" }}>🌐</span>
-        <span style={{ fontSize: "20px", cursor: "pointer" }}>📘</span>
-        <span style={{ fontSize: "20px", cursor: "pointer" }}>🐦</span>
-        <span style={{ fontSize: "20px", cursor: "pointer" }}>📸</span>
-      </div>
-
-      <p style={{ fontSize: "13px", marginTop: "10px", opacity: 0.7 }}>
-        Follow us for updates, new materials, and global opportunities.
-      </p>
-    </div>
-
-  </div>
-
-  {/* DIVIDER */}
-  <div style={{
-    borderTop: "1px solid rgba(255,255,255,0.2)",
-    margin: "40px 0"
-  }} />
-
-  {/* BOTTOM BAR */}
-  <div style={{
-    textAlign: "center",
-    fontSize: "13px",
-    opacity: 0.7
-  }}>
-    © {new Date().getFullYear()} Study Hub — All Rights Reserved <br />
-    Designed & Developed by <span style={{ color: "#00d4ff" }}>David Kivinda</span>
-  </div>
-
-</footer>
+<Footer />
       
       {/* ================= VIEWER ================= */}
       {viewer && (
