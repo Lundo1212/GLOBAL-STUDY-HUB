@@ -33,12 +33,10 @@ export default function NoteView() {
       <div style={{ padding: 10, display: "flex", gap: 10 }}>
         
         <button onClick={() => navigate("/")}>
-          🏠 Home
+          🏠 Click here for more study materials
         </button>
 
-        <a href={fileUrl} target="_blank">
-          📖 Open
-        </a>
+        
 
         <a href={fileUrl} download>
           ⬇ Download
