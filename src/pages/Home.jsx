@@ -38,14 +38,20 @@ export default function Home() {
   }, []);
 
   // ================= STATES =================
-  const [menu, setMenu] = useState(false);
+  const [menu, setMenu] = useState(null);
   const [login, setLogin] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const [aiOpen, setAiOpen] = useState(false);
+const [aiInput, setAiInput] = useState("");
+const [aiChat, setAiChat] = useState([]);
 
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
 
   const [materials, setMaterials] = useState([]);
   const [search, setSearch] = useState("");
+  
   const [viewer, setViewer] = useState(null);
   const [activeCategory, setActiveCategory] = useState("");
   const [uniIndex, setUniIndex] = useState(0);
@@ -73,6 +79,11 @@ const [uploadFile, setUploadFile] = useState(null);
 const [replyText, setReplyText] = useState({});
 const [showAllComments, setShowAllComments] = useState(false);
 const [shuffledQuestions, setShuffledQuestions] = useState([]);
+
+const [filteredMaterials, setFilteredMaterials] = useState([]);
+const [searchResults, setSearchResults] = useState([]);
+const [activeMenuId, setActiveMenuId] = useState(null);
+
 // ================= MUSIC TRACKS =================
 const musicTracks = [
   { name: "common person", src: "/music/music1.mp3" },
@@ -525,20 +536,35 @@ const [email, setEmail] = useState("");
   };
 
   // ================= OPEN FILE (WORKS WITH ADMIN URL) =================
-  const openFile = (file) => {
-    if (!file) return;
-    setViewer(file);
-  };
-
+ const openFile = (url) => {
+  setViewer(url + "#toolbar=0");
+};
   // ================= DOWNLOAD (FORCED WORKING) =================
-  const downloadFile = (file, name) => {
-    const a = document.createElement("a");
-    a.href = file;
-    a.download = name || "document.pdf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
+  const downloadFile = async (url, title) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+
+  const link = document.createElement("a");
+  link.href = window.URL.createObjectURL(blob);
+  link.download = title || "file.pdf";
+  link.click();
+};
+
+   const shareFile = (file) => {
+  const url = `${window.location.origin}/notes/${file.id}`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: file.title,
+      text: "view and download this document for free",
+      url: url
+    });
+  } else {
+    navigator.clipboard.writeText(url);
+    alert("Link copied!");
+  }
+};
+
 
   // ================= CATEGORIES =================
   const categories = [
@@ -551,33 +577,38 @@ const [email, setEmail] = useState("");
   ];
 
   // ================= FILTER =================
-  const filtered = activeCategory
-    ? materials.filter(m => m.category === activeCategory)
-    : materials;
+  const baseList = activeCategory
+  ? materials.filter(m => m.category === activeCategory)
+  : materials;
 
-  // ================= SEARCH SUGGESTIONS =================
-  const searchResults = search
-    ? materials.filter(m =>
-        m.title.toLowerCase().includes(search.toLowerCase()) ||
-        m.category.toLowerCase().includes(search.toLowerCase())
-      )
-    : [];
+const filtered = filteredMaterials.length > 0
+  ? filteredMaterials
+  : baseList;
 
-    const handleSearchSubmit = () => {
-  if (!search) return;
+  
 
-  const match = materials.find(m =>
+  const handleSearchSubmit = () => {
+  if (!search.trim()) {
+    setSearchResults([]);
+    return;
+  }
+
+  const results = materials.filter(m =>
     m.title.toLowerCase().includes(search.toLowerCase()) ||
     m.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (match) {
-    openFile(match.file_url);
-    setSearch("");
-  } else {
-    alert("No matching document found");
-  }
+  setSearchResults(results);
 };
+
+  useEffect(() => {
+  const results = materials.filter(m =>
+    m.title.toLowerCase().includes(search.toLowerCase()) ||
+    m.category.toLowerCase().includes(search.toLowerCase())
+  );
+
+  setFilteredMaterials(results);
+}, [search]);
 
   const handleSearchClick = (file) => {
     openFile(file);
@@ -691,249 +722,474 @@ const deleteReply = (commentId, replyId) => {
 };
 
 
+const sendAI = async () => {
+  if (!aiInput.trim()) return;
+
+  const userMessage = aiInput;
+
+  setAiChat([...aiChat, { role: "You", text: userMessage }]);
+  setAiInput("");
+
+  const res = await fetch("http://localhost:5000/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: userMessage })
+  });
+
+  const data = await res.json();
+
+  setAiChat(prev => [
+    ...prev,
+    { role: "AI", text: data.reply }
+  ]);
+};
+
+
+
+
+
+
   // ================= UI =================
   return (
     <div>
 
-      {/* ================= TOP BAR ================= */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: 15,
-        background: "black",
-        color: "blue",
-        position: "sticky",
-        top: 0,
-        zIndex: 9999
-      }}>
+      {/* ================= STUDOCU LAYOUT START ================= */}
+<div style={{ display: "flex", minHeight: "100vh", background: "#f5f6f8" }}>
 
-        <div style={{ display: "flex", gap: 10 }}>
-          <img src="/logo.jpeg" style={{ width: 35 }} />
-          <h2>GLOBAL-STUDY-HUB</h2>
-        </div>
+  {/* ================= LEFT SIDEBAR ================= */}
+  <aside style={{
+    width: "260px",
+    background: "white",
+    borderRight: "1px solid #eee",
+    padding: "20px",
+    position: "sticky",
+    top: 0,
+    height: "100vh"
+  }}>
 
-        <button onClick={() => setMenu(!menu)}>⋮</button>
-
-        {menu && (
-          <div style={{ position: "absolute", right: 10, top: 60 }}>
-            <button onClick={() => setLogin(true)}>Login</button>
-          </div>
-        )}
-
-      </div>
-
-      {/* ================= HERO BACKGROUND ================= */}
-      <section style={{ height: "100vh", position: "relative" }}>
-
-        {/* FADE BACKGROUND */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `url(${images[bgIndex]})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            transition: "opacity 0.5s ease-in-out",
-            
-            opacity: fade ? 1 : 0
-          }}
-        />
-
-         {/* DARK OVERLAY */}
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.6)"
-        }} />
-
-        
-
-        {/* CONTENT */}
-        <div style={{
-          position: "relative",
-          color: "white",
-          textAlign: "center",
-          paddingTop: 100
-        }}>
-
-          <h1 style={{
-  color: "#00d4ff",
-  fontSize: "48px",
-  fontWeight: "bold",
-  textShadow: "0 0 10px rgba(3, 38, 166, 0.9)"
-}}>
-  WELCOME TO STUDY HUB
-</h1>
-          <p>Join students, learners, and educators from every corner of the world in a powerful knowledge-sharing community where education has no limits. Discover, upload, and access high-quality notes, textbooks, past papers, tutorials, and research materials instantly. Whether you’re preparing for exams, mastering a new skill, or exploring advanced topics, StudyHub connects you to a global library of learning resources designed to help you succeed, grow, and stay ahead academically—anytime, anywhere.
-</p>
-
-          {/* ================= SEARCH ================= */}
-          <div style={{ position: "relative", maxWidth: 500, margin: "auto" }}>
-
-  <div style={{ display: "flex" }}>
-    <input
-      placeholder="Search documents..."
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-      style={{ flex: 1, padding: 10 }}
-    />
+    <div style={{ textAlign: "center", marginBottom: 20 }}>
+      <img src="/logo.jpeg" style={{ width: 50 }} />
+      <h3>GLOBAL STUDY HUB</h3>
+      <p style={{ fontSize: 12, color: "gray" }}>Guest user</p>
+    </div>
 
     <button
-      onClick={handleSearchSubmit}
-      style={{
-        padding: "10px 15px",
-        background: "#1e90ff",
-        color: "white",
-        border: "none",
-        cursor: "pointer"
-      }}
-    >
-      Search
-    </button>
-  </div>
+  onClick={() => {
+  document.getElementById("upload-section")?.scrollIntoView({
+    behavior: "smooth"
+  });
+}}
+  style={{
+    width: "100%",
+    padding: 10,
+    background: "#1e90ff",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer"
+  }}
+>
+  + New Upload
+</button>
 
-            {search && (
-              <div style={{
-                background: "white",
-                color: "black",
-                position: "absolute",
-                width: "100%",
-                zIndex: 999
-              }}>
-                {searchResults.map(m => (
-                  <div
-                    key={m.id}
-                    style={{ padding: 10, cursor: "pointer" }}
-                    onClick={() => handleSearchClick(m.file_url)}
-                                         
-                  >
-                    {m.title}
-                  </div>
-                ))}
-              </div>
-            )}
+    <div style={{ marginTop: 30, fontSize: 14 }}>
+      <p>🏠 Home</p>
+      <p>📚 My Library</p>
+      <p>🧠 AI Notes</p>
+      <p
+  style={{ cursor: "pointer" }}
+  onClick={() => setAiOpen(true)}
+>
+  💬 Ask AI
+</p>
+      <p>🧪 AI Quiz</p>
+      <p>🕘 Recent</p>
+    </div>
 
-          </div>
+    {aiOpen && (
+  <div style={{
+    marginTop: 20,
+    padding: 10,
+    background: "#f5f6f8",
+    borderRadius: 10,
+    height: "300px",
+    display: "flex",
+    flexDirection: "column"
+  }}>
 
-          {/* ================= QUICK CATEGORY ================= */}
-          <div style={{ marginTop: 20 }}>
-            {categories.map(c => (
-              <button
-                key={c}
-                onClick={() => handleCategoryClick(c)}
-                style={{ margin: 5, padding: 8, background: "#ebeff0ee", color: "blue", fontFamily: "Georgia, serif"}}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <b>AI Tutor</b>
+      <button onClick={() => setAiOpen(false)}>X</button>
+    </div>
 
-        </div>
-      </section>
-
-      {/* ================= FLOATING QUOTE (INSIDE HERO) ================= */}
-<div style={{
-  position: "absolute",
-  bottom: "80px",
-  left: "50%",
-  transform: "translateX(-50%)",
-  width: "70%",
-  maxWidth: "700px",
-  padding: "20px 30px",
-  borderRadius: "60px",
-  textAlign: "center",
-  color: "white",
-  fontSize: "18px",
-  fontStyle: "italic",
-  backdropFilter: "blur(12px)",
-  background: "rgba(29, 27, 27, 0.91)",
-  border: "1px solid rgba(172, 19, 19, 0.9)",
-  boxShadow: "0 10px 40px rgba(200, 219, 219, 0.89)",
-  transition: "all 0.8s ease"
-}}>
-  ✨ "{quotes[quoteIndex]}"
-</div>
-
-      {/* ================= EXPLORE BAR ================= */}
-<div style={{
-  background: "linear-gradient(90deg, #1e90ff, #00d4ff)",
-  color: "white",
-  textAlign: "center",
-  padding: "18px 10px",
-  fontSize: "18px",
-  fontWeight: "600",
-  letterSpacing: "1px",
-  boxShadow: "0 4px 15px rgba(0,0,0,0.2)"
-}}>
-  📚 Explore different study materials based on course, unit, and institution across the world 🌍
-</div>
-
-
-
-      {/* ================= MATERIALS ================= */}
-{categories.map(cat => {
-  const items = filtered.filter(m => m.category === cat);
-
-  const isOpen = expandedCategory === cat;
-
-  const visibleItems = isOpen ? items : items.slice(0, 5);
-
-  return (
-    <section
-      id={cat}
-      key={cat}
-      style={{ padding: 30, background: "#201e18" }}
-    >
-
-      <h2 style={{ color: "#1e90ff" }}>{cat}</h2>
-
-      {/* MATERIAL LIST */}
-      {visibleItems.map(m => (
-        <div
-          key={m.id}
-          style={{
-            background: "white",
-            margin: 10,
-            padding: 10,
-            borderRadius: 5
-          }}
-        >
-          <h3>{m.title}</h3>
-
-          <button onClick={() => openFile(m.file_url)}>
-            Read
-          </button>
-
-          <button onClick={() => downloadFile(m.file_url, m.title)}>
-            Download
-          </button>
+    {/* CHAT MESSAGES */}
+    <div style={{
+      flex: 1,
+      overflowY: "auto",
+      marginTop: 10,
+      fontSize: 12
+    }}>
+      {aiChat.map((msg, i) => (
+        <div key={i}>
+          <b>{msg.role}:</b> {msg.text}
         </div>
       ))}
+    </div>
 
-      {/* VIEW MORE BUTTON */}
-      {items.length > 5 && (
+    {/* INPUT */}
+    <input
+      value={aiInput}
+      onChange={(e) => setAiInput(e.target.value)}
+      placeholder="Ask something..."
+      style={{ marginTop: 10, padding: 5 }}
+    />
+
+    <button onClick={sendAI}>
+      Send
+    </button>
+
+  </div>
+)}
+
+
+
+
+    {/* ================= QUOTES INSIDE SIDEBAR ================= */}
+<div style={{
+  marginTop: 25,
+  padding: 20,
+  background: "#f5f6f8",
+  borderRadius: 10,
+  fontSize: 15,
+  color: "#0710ca",
+  lineHeight: "1.5",
+  borderLeft: "3px solid #1e90ff"
+}}>
+  <b style={{ color: "#d30d0d" }}>💡 Daily Quote</b>
+  <p style={{ marginTop: 8 }}>
+    {quotes[quoteIndex]}
+  </p>
+</div>
+
+  </aside>
+
+  {/* ================= MAIN CONTENT ================= */}
+  <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+
+  {/* TOP SEARCH + FILTER BAR */}
+  <div style={{
+    background: "white",
+    padding: "12px 20px",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 10,
+    alignItems: "center",
+    position: "sticky",
+    top: 0,
+    zIndex: 100
+  }}>
+
+    <div style={{ display: "flex", flex: 1, gap: 10, alignItems: "center" }}>
+
+  <input
+    placeholder="Search by keyword..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    style={{
+      flex: 1,
+      padding: 10,
+      borderRadius: 20,
+      border: "1px solid #ddd"
+    }}
+  />
+
+  <button
+    onClick={handleSearchSubmit}
+    style={{
+      padding: "10px 15px",
+      border: "none",
+      background: "#1e90ff",
+      color: "white",
+      borderRadius: 20,
+      cursor: "pointer"
+    }}
+  >
+    Search
+  </button>
+
+  </div>
+
+  {searchResults.length > 0 && (
+  <div style={{
+    position: "absolute",
+    background: "white",
+    width: "300px",
+    maxHeight: "250px",
+    overflowY: "auto",
+    boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
+    zIndex: 9999
+  }}>
+
+    {searchResults.map((item, i) => (
+      <div
+        key={i}
+        onClick={() => {
+          handleCategoryClick(item.category); // scroll to category
+          setSearchResults([]); // close dropdown
+          setSearch("");
+        }}
+        style={{
+          padding: "10px",
+          cursor: "pointer",
+          borderBottom: "1px solid #eee"
+        }}
+      >
+        <b>{item.title}</b>
+        <div style={{ fontSize: 12, color: "gray" }}>
+          {item.category}
+        </div>
+      </div>
+    ))}
+
+  </div>
+)}
+
+
+  <div style={{ position: "relative", display: "inline-block" }}>
+  <button
+    onClick={() => setMenuOpen(!menuOpen)}
+    style={{
+      marginLeft: "10px",
+      background: "transparent",
+      border: "none",
+      fontSize: "22px",
+      cursor: "pointer"
+    }}
+  >
+    ⋮
+  </button>
+
+  {menuOpen && (
+    <div style={{
+      position: "absolute",
+      right: 0,
+      top: "30px",
+      background: "white",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
+      zIndex: 9999,
+      width: "140px"
+    }}>
+
+      <button
+        onClick={() => {
+          setLogin(true);
+          setMenuOpen(false);
+        }}
+        style={{
+          width: "100%",
+          padding: "10px",
+          border: "none",
+          background: "none",
+          cursor: "pointer",
+          textAlign: "left"
+        }}
+      >
+        🔐 Admin Login
+      </button>
+
+    </div>
+  )}
+</div>
+
+
+  
+    
+
+    {/* CATEGORY FILTER */}
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      {categories.map((c) => (
         <button
-          onClick={() =>
-            setExpandedCategory(isOpen ? null : cat)
-          }
+          key={c}
+          onClick={() => handleCategoryClick(c)}
           style={{
-            marginTop: 10,
-            padding: "10px 15px",
-            background: "#1e90ff",
-            color: "white",
-            border: "none",
+            padding: "8px 12px",
+            borderRadius: "20px",
+            border: "1px solid #ddd",
+            background: activeCategory === c ? "#1e90ff" : "white",
+            color: activeCategory === c ? "white" : "black",
             cursor: "pointer"
           }}
         >
-          {isOpen
-            ? "Show Less"
-            : `View More (${items.length - 5})`}
+          {c}
         </button>
-      )}
+      ))}
+    </div>
+  </div>
 
-    </section>
-  );
-})}
+  {/* ================= BIG EXPLORE BANNER ================= */}
+<div
+  style={{
+    width: "100%",
+    padding: "40px 20px",
+    background: "linear-gradient(135deg, #1e90ff, #00d4ff)",
+    color: "white",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center"
+  }}
+>
+  <h1
+    style={{
+      fontSize: "32px",
+      fontWeight: "bold",
+      marginBottom: "10px",
+      letterSpacing: "1px"
+    }}
+  >
+    EXPLORE DIFFERENT STUDY MATERIALS
+  </h1>
+
+  <p
+    style={{
+      fontSize: "14px",
+      opacity: 0.9,
+      maxWidth: "600px"
+    }}
+  >
+    Access study materials across science, engineering, ICT, health, and more
+  </p>
+</div>
+
+{/* ================= CONTENT AREA ================= */}
+<div style={{ flex: 1, overflowY: "auto" }}>
+
+  {/* ================= YOUR MATERIALS ================= */}
+  {categories.map((cat) => {
+    const items = filtered.filter((m) => m.category === cat);
+    const isOpen = expandedCategory === cat;
+    const visibleItems = isOpen ? items : items.slice(0, 5);
+
+    return (
+      <section
+        id={cat}
+        key={cat}
+        style={{ padding: "20px" }}
+      >
+        <h2 style={{ color: "#1e90ff" }}>{cat}</h2>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "15px"
+          }}
+        >
+          {visibleItems.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                background: "white",
+                borderRadius: 12,
+                padding: 15
+              }}
+            >
+              {/* TITLE */}
+              <h3>{m.title}</h3>
+
+              {/* ================= ACTION BUTTONS ================= */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  marginTop: "10px",
+                  flexWrap: "wrap"
+                }}
+              >
+                <button
+                  onClick={() => openFile(m.file_url)}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    background: "#1e90ff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  📖 Read
+                </button>
+
+                <button
+                  onClick={() =>
+                    downloadFile(m.file_url, m.title)
+                  }
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    background: "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  ⬇ Download
+                </button>
+
+                <button
+                  onClick={() => shareFile(m)}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    background: "#6f42c1",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  🔗 Share
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ================= VIEW MORE ================= */}
+        {items.length > 5 && (
+          <button
+            onClick={() =>
+              setExpandedCategory(isOpen ? null : cat)
+            }
+            style={{
+              marginTop: "15px",
+              padding: "8px 12px",
+              border: "none",
+              background: "#1e90ff",
+              color: "white",
+              borderRadius: "6px",
+              cursor: "pointer"
+            }}
+          >
+            {isOpen
+              ? "Show Less"
+              : `View More (${items.length - 5})`}
+          </button>
+        )}
+      </section>
+    );
+  })}
+
+</div>
+
+</main>
+</div> {/* CLOSES FLEX LAYOUT WRAPPER */}
+      
 
       {/* ================= TRY YOUR INTELLIGENCE GAME ================= */}
 <div style={{
@@ -1100,7 +1356,7 @@ const deleteReply = (commentId, replyId) => {
 </div>
 
       {/* ================= STUDENT UPLOAD BAR ================= */}
-<div style={{
+<div id="upload-section" style={{
   background: "linear-gradient(90deg, #141e30, #243b55)",
   padding: "40px 20px",
   color: "white",
@@ -1534,21 +1790,49 @@ const deleteReply = (commentId, replyId) => {
 
 </div>
       
+      {/* ================= STUDOCU LAYOUT END ================= */}
+
+
       {/* ================= PROFESSIONAL FOOTER ================= */}
 <Footer />
       
       {/* ================= VIEWER ================= */}
       {viewer && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "black",
-          zIndex: 999999
-        }}>
-          <button onClick={() => setViewer(null)}>Close</button>
-          <iframe src={viewer} style={{ width: "100%", height: "100%" }} />
-        </div>
-      )}
+  <div style={{
+    position: "fixed",
+    inset: 0,
+    background: "black",
+    display: "flex",
+    flexDirection: "column",
+    zIndex: 999999
+  }}>
+
+    <div style={{
+      background: "#1e90ff",
+      color: "white",
+      padding: 10,
+      display: "flex",
+      justifyContent: "space-between"
+    }}>
+      <span>PDF Viewer</span>
+
+      <button onClick={() => setViewer(null)}>
+        Close
+      </button>
+    </div>
+
+    <iframe
+      src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(viewer)}`}
+      style={{
+        flex: 1,
+        width: "100%",
+        border: "none",
+        background: "white"
+      }}
+    />
+
+  </div>
+)}
 
       {musicEnabled && (
   <audio
@@ -1558,23 +1842,95 @@ const deleteReply = (commentId, replyId) => {
 )}
 
       {/* ================= LOGIN ================= */}
-      {login && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "black",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center"
-        }}>
-          <div style={{ background: "white", padding: 20 }}>
-            <input placeholder="user" onChange={e => setUser(e.target.value)} />
-            <input type="password" onChange={e => setPass(e.target.value)} />
-            <button onClick={handleLogin}>Login</button>
-          </div>
-        </div>
-      )}
+{login && (
+  <div style={{
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.6)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999
+  }}>
+    
+    <div style={{
+      background: "white",
+      padding: "25px",
+      borderRadius: "10px",
+      width: "300px",
+      position: "relative",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
+    }}>
+
+      {/* CLOSE BUTTON */}
+      <button
+        onClick={() => setLogin(false)}
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          background: "red",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+          padding: "4px 8px",
+          borderRadius: "4px"
+        }}
+      >
+        X
+      </button>
+
+      <h2 style={{ textAlign: "center", marginBottom: "15px" }}>
+        Admin Login
+      </h2>
+
+      {/* USERNAME */}
+      <input
+        placeholder="Username"
+        onChange={(e) => setUser(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px",
+          marginBottom: "10px",
+          border: "1px solid #ccc",
+          borderRadius: "5px"
+        }}
+      />
+
+      {/* PASSWORD */}
+      <input
+        type="password"
+        placeholder="Password"
+        onChange={(e) => setPass(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px",
+          marginBottom: "15px",
+          border: "1px solid #ccc",
+          borderRadius: "5px"
+        }}
+      />
+
+      {/* LOGIN BUTTON */}
+      <button
+        onClick={handleLogin}
+        style={{
+          width: "100%",
+          padding: "10px",
+          background: "#1e90ff",
+          color: "white",
+          border: "none",
+          borderRadius: "5px",
+          cursor: "pointer"
+        }}
+      >
+        Login
+      </button>
 
     </div>
+  </div>
+)}
+
+</div>
   );
 }
