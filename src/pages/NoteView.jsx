@@ -1,49 +1,68 @@
-import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase } from "./supabaseClient";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 export default function NoteView() {
   const { id } = useParams();
-  const [file, setFile] = useState(null);
+  const navigate = useNavigate();
+  const [fileUrl, setFileUrl] = useState("");
 
+  // FETCH NOTE FROM SUPABASE
   useEffect(() => {
-    fetchFile();
-  }, []);
+    const fetchNote = async () => {
+      const { data, error } = await supabase
+        .from("materials")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-  const fetchFile = async () => {
-    const { data, error } = await supabase
-      .from("materials")
-      .select("*")
-      .eq("id", id)
-      .single();
+      if (data) {
+        setFileUrl(data.file_url);
+      }
+    };
 
-    if (!error) setFile(data);
-  };
+    fetchNote();
+  }, [id]);
 
-  if (!file) return <p>Loading...</p>;
+  if (!fileUrl) return <p>Loading...</p>;
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>{file.title}</h2>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
 
+      {/* TOP BUTTONS */}
+      <div style={{ padding: 10, display: "flex", gap: 10 }}>
+        
+        <button onClick={() => navigate("/")}>
+          🏠 Home
+        </button>
+
+        <a href={fileUrl} target="_blank">
+          📖 Open
+        </a>
+
+        <a href={fileUrl} download>
+          ⬇ Download
+        </a>
+
+        <button
+          onClick={() =>
+            navigator.share
+              ? navigator.share({
+                  title: "Study Material",
+                  url: fileUrl
+                })
+              : navigator.clipboard.writeText(fileUrl)
+          }
+        >
+          🔗 Share
+        </button>
+      </div>
+
+      {/* DOCUMENT VIEWER */}
       <iframe
-        src={file.file_url + "#toolbar=0"}
-        width="100%"
-        height="600px"
-      ></iframe>
-
-      <br /><br />
-
-      <a href={file.file_url} download>
-        <button>⬇ Download</button>
-      </a>
-
-      <button onClick={() => {
-        navigator.clipboard.writeText(window.location.href);
-        alert("Link copied!");
-      }}>
-        🔗 Share
-      </button>
+        src={`https://docs.google.com/gview?url=${fileUrl}&embedded=true`}
+        style={{ width: "100%", flex: 1 }}
+      />
     </div>
   );
 }

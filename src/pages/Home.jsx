@@ -550,31 +550,40 @@ const [email, setEmail] = useState("");
   link.click();
 };
 
-   const shareFile = (file) => {
+// ================= SHARE FILE =================
+const shareFile = async (file) => {
+  if (!file?.id) {
+    alert("Missing file ID");
+    return;
+  }
+
   const url = `${window.location.origin}/notes/${file.id}`;
 
-  if (navigator.share) {
-    navigator.share({
-      title: file.title,
-      text: "view and download this document for free",
-      url: url
-    });
-  } else {
-    navigator.clipboard.writeText(url);
-    alert("Link copied!");
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: file.title,
+        text: `📚 ${file.title} - Global Study Hub`,
+        url
+      });
+    } else {
+      await navigator.clipboard.writeText(url);
+      alert("Link copied!");
+    }
+  } catch (err) {
+    console.log(err);
   }
 };
 
-
-  // ================= CATEGORIES =================
-  const categories = [
-    "MATHEMATICS AND PURE SCIENCES",
-    "ENGINEERING",
-    "ICT",
-    "TECHNICAL",
-    "HUMAN RESOURCE",
-    "HEALTH SCIENCES"
-  ];
+// ================= CATEGORIES =================
+const categories = [
+  "MATHEMATICS AND PURE SCIENCES",
+  "ENGINEERING",
+  "ICT",
+  "TECHNICAL",
+  "HUMAN RESOURCE",
+  "HEALTH SCIENCES"
+];
 
   // ================= FILTER =================
   const baseList = activeCategory
