@@ -563,7 +563,7 @@ const shareFile = async (file) => {
     if (navigator.share) {
       await navigator.share({
         title: file.title,
-        text: `📚 ${file.title} - Global Study Hub`,
+        text: `📚 ${file.title} - Access this document here`,
         url
       });
     } else {
