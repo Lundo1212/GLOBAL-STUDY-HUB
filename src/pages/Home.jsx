@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 import Footer from "../components/Footer";
 
 export default function Home() {
+  const isMobile = window.innerWidth < 768;
 
   const navigate = useNavigate();
 
@@ -763,18 +764,23 @@ const sendAI = async () => {
     <div>
 
       {/* ================= STUDOCU LAYOUT START ================= */}
-<div style={{ display: "flex", minHeight: "100vh", background: "#f5f6f8" }}>
+<div style={{
+  display: "flex",
+  flexDirection: isMobile ? "column" : "row",
+  minHeight: "100vh",
+  background: "#f5f6f8"
+}}>
 
   {/* ================= LEFT SIDEBAR ================= */}
   <aside style={{
-    width: "260px",
-    background: "white",
-    borderRight: "1px solid #eee",
-    padding: "20px",
-    position: "sticky",
-    top: 0,
-    height: "100vh"
-  }}>
+  width: isMobile ? "100%" : "260px",
+  background: "white",
+  borderRight: "1px solid #eee",
+  padding: "20px",
+  position: isMobile ? "relative" : "sticky",
+  top: 0,
+  height: isMobile ? "auto" : "100vh"
+}}>
 
     <div style={{ textAlign: "center", marginBottom: 20 }}>
       <img src="/logo.jpeg" style={{ width: 50 }} />
@@ -888,7 +894,7 @@ const sendAI = async () => {
   {/* TOP SEARCH + FILTER BAR */}
   <div style={{
     background: "white",
-    padding: "12px 20px",
+    padding: isMobile ? "10px" : "12px 20px",
     display: "flex",
     flexWrap: "wrap",
     gap: 10,
@@ -905,7 +911,7 @@ const sendAI = async () => {
     value={search}
     onChange={(e) => setSearch(e.target.value)}
     style={{
-      flex: 1,
+      flex: isMobile ? "100%" : 1,
       padding: 10,
       borderRadius: 20,
       border: "1px solid #ddd"
@@ -932,7 +938,7 @@ const sendAI = async () => {
   <div style={{
     position: "absolute",
     background: "white",
-    width: "300px",
+    width: isMobile ? "90%" : "300px",
     maxHeight: "250px",
     overflowY: "auto",
     boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
@@ -1093,7 +1099,9 @@ const sendAI = async () => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns: isMobile
+  ? "1fr"
+  : "repeat(auto-fit, minmax(220px, 1fr))",
             gap: "15px"
           }}
         >
@@ -1122,7 +1130,7 @@ const sendAI = async () => {
                   onClick={() => openFile(m.file_url)}
                   style={{
                     flex: 1,
-                    padding: "8px",
+                    padding: isMobile ? "12px" : "10px",
                     background: "#1e90ff",
                     color: "white",
                     border: "none",
@@ -1139,7 +1147,7 @@ const sendAI = async () => {
                   }
                   style={{
                     flex: 1,
-                    padding: "8px",
+                    padding: isMobile ? "12px" : "10px",
                     background: "#28a745",
                     color: "white",
                     border: "none",
@@ -1154,7 +1162,7 @@ const sendAI = async () => {
                   onClick={() => shareFile(m)}
                   style={{
                     flex: 1,
-                    padding: "8px",
+                    padding: isMobile ? "12px" : "10px",
                     background: "#6f42c1",
                     color: "white",
                     border: "none",
@@ -1177,7 +1185,7 @@ const sendAI = async () => {
             }
             style={{
               marginTop: "15px",
-              padding: "8px 12px",
+              padding: isMobile ? "12px" : "10px",
               border: "none",
               background: "#1e90ff",
               color: "white",
